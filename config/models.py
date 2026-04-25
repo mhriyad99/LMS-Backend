@@ -2,7 +2,17 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, select, fun
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import column_property, relationship
+import datetime as dt
+from datetime import datetime, timedelta
+
 from config.database import Base
+
+DEFAULT_DUE_DATE = 15
+
+
+def default_due_date():
+    return datetime.now(dt.UTC) + timedelta(days=DEFAULT_DUE_DATE)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -43,14 +53,18 @@ class Book(Base):
                                back_populates="book",
                                cascade="all, delete-orphan")
 
+
 class BorrowRecord(Base):
     __tablename__ = "borrow_records"
     id = Column(Integer, primary_key=True, nullable=False)
     book_copy_id = Column(Integer, ForeignKey('book_copies.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     borrow_date = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    due_date = Column(TIMESTAMP(timezone=True), nullable=False)
+    due_date = Column(TIMESTAMP(timezone=True), nullable=False, default=default_due_date)
     return_date = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    user = relationship("User")
+    book_copy = relationship("BookCopy")
 
 
 
