@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from config.database import get_db
 from config import models, schemas
@@ -11,8 +12,9 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.BookResponse])
-def get_book(db: Session = Depends(get_db)):
-    books = db.query(models.Book).all()
+async def get_book(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Book))
+    books = result.scalars().all()
 
     return books
 
