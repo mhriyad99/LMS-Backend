@@ -7,7 +7,7 @@ from config import models, schemas
 from config.schemas import AddCopiesRequest
 
 router = APIRouter(
-    prefix="/book_copies",
+    prefix="/books/copies",
     tags=["Book Copy"]
 )
 
@@ -25,7 +25,7 @@ async def add_copies(book_id: int, payload: AddCopiesRequest,
                             detail="Quantity must be at least 1")
 
     copies = [
-        BookCopy(
+        models.BookCopy(
             book_id=book_id,
             availability=True
         )
