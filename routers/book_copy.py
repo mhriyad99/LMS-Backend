@@ -1,17 +1,18 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from config.database import get_db
 from config import models, schemas
 from config.schemas import AddCopiesRequest
 
 router = APIRouter(
-    prefix="/books/copies",
+    prefix="/copies",
     tags=["Book Copy"]
 )
 
-@router.post("/{_id}")
+@router.post("/books/{book_id}/copies")
 async def add_copies(book_id: int, payload: AddCopiesRequest,
                      db: AsyncSession = Depends(get_db)):
     book = await db.get(models.Book, book_id)
@@ -40,3 +41,41 @@ async def add_copies(book_id: int, payload: AddCopiesRequest,
         "book_id": book_id
     }
 
+@router.get("/books/{book_id}/copies", response_model=List[schemas.CopyResponse])
+async def get_copies(book_id: int, db: AsyncSession = Depends(get_db)):
+    book = await db.get(models.Book, book_id)
+
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Book not found")
+
+    copies = await db.scalars(
+        select(models.BookCopy)
+        .where(models.BookCopy.book_id == book_id)
+    )
+
+    return copies.all()
+
+@router.get("/{copy_id}", response_model=schemas.CopyResponse)
+async def get_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
+    copy = await db.get(models.BookCopy, copy_id)
+    if not copy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy not found")
+
+    return copy
+
+@router.delete("/{copy_id}", response_model=schemas.CopyResponse)
+async def delete_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
+    copy = await db.get(models.BookCopy, copy_id)
+    if not copy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy not found")
+
+    if not copy.availability:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy is currently borrowed")
+
+    await db.delete(copy)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
