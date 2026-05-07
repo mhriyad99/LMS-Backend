@@ -2,17 +2,18 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime, UTC
 
-from config.database import get_db
-from config import models, schemas
-from config.schemas import AddCopiesRequest
+from app.config.database import get_db
+from app.config import schemas, models
+from app.config.schemas import AddCopiesRequest
 
 router = APIRouter(
     prefix="/copies",
     tags=["Book Copy"]
 )
 
-@router.post("/books/{book_id}/copies")
+@router.post("/{book_id}")
 async def add_copies(book_id: int, payload: AddCopiesRequest,
                      db: AsyncSession = Depends(get_db)):
     book = await db.get(models.Book, book_id)
@@ -41,7 +42,7 @@ async def add_copies(book_id: int, payload: AddCopiesRequest,
         "book_id": book_id
     }
 
-@router.get("/books/{book_id}/copies", response_model=List[schemas.CopyResponse])
+@router.get("/{book_id}", response_model=List[schemas.CopyResponse])
 async def get_copies(book_id: int, db: AsyncSession = Depends(get_db)):
     book = await db.get(models.Book, book_id)
 
@@ -79,3 +80,60 @@ async def delete_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(copy)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.post("/{copy_id}/borrow")
+async def borrow_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db)):
+    copy = await db.get(models.BookCopy, copy_id)
+    if not copy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy not found")
+    if not copy.availability:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy is currently borrowed")
+
+    borrow = models.BorrowRecord(
+        book_copy_id=copy_id,
+        user_id=user_id
+    )
+
+    copy.availability = False
+
+    db.add(borrow)
+    await db.commit()
+
+    return {"message": "Book borrowed successfully"}
+
+@router.post("/{copy_id}/return")
+async def return_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db)):
+    copy = await db.get(models.BookCopy, copy_id)
+
+    if not copy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Copy not found")
+    if copy.availability:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Copy already returned")
+
+    result = await db.scalars(
+        select(models.BorrowRecord)
+        .where(
+            models.BorrowRecord.book_copy_id == copy_id,
+            models.BorrowRecord.user_id == user_id,
+            models.BorrowRecord.return_date.is_(None)
+        )
+        .order_by(models.BorrowRecord.borrow_date.desc())
+    )
+
+    record = result.first()
+
+    if not record:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Active borrow record not found")
+
+    record.return_date = datetime.now(UTC)
+    copy.availability = True
+
+    await db.commit()
+
+    return {"message": "Book returned successfully"}
+

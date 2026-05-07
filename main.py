@@ -1,7 +1,5 @@
 from fastapi import FastAPI
-from config import models
-from config.database import engine
-from routers import books, book_copy
+from app.routers import books, book_copy, users
 
 app = FastAPI()
 
@@ -9,6 +7,8 @@ app = FastAPI()
 
 app.include_router(books.router)
 app.include_router(book_copy.router)
+app.include_router(users.router)
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}

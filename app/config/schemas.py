@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class Book(BaseModel):
     title: str
@@ -18,3 +18,13 @@ class CopyResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    email: EmailStr
+    username: str

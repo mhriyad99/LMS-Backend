@@ -1,10 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update
 
-from config.database import get_db
-from config import models, schemas
+from app.config.database import get_db
+from app.config import schemas, models
 
 router = APIRouter(
     prefix="/books",
@@ -29,7 +29,7 @@ async def update_book(_id: int, db: AsyncSession = Depends(get_db)):
     return book
 
 @router.post("/", response_model=schemas.BookResponse)
-async def add_book(payload: schemas.Book,db: AsyncSession = Depends(get_db)):
+async def add_book(payload: schemas.Book, db: AsyncSession = Depends(get_db)):
     new_book = models.Book(**payload.model_dump())
     db.add(new_book)
     await db.commit()

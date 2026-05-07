@@ -5,7 +5,7 @@ from sqlalchemy.orm import column_property, relationship
 import datetime as dt
 from datetime import datetime, timedelta
 
-from config.database import Base
+from app.config.database import Base
 
 DEFAULT_DUE_DATE = 15
 
