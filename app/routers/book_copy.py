@@ -7,6 +7,7 @@ from datetime import datetime, UTC
 from app.config.database import get_db
 from app.config import schemas, models
 from app.config.schemas import AddCopiesRequest
+from app.config.security import get_current_user
 
 router = APIRouter(
     prefix="/copies",
@@ -15,7 +16,8 @@ router = APIRouter(
 
 @router.post("/{book_id}")
 async def add_copies(book_id: int, payload: AddCopiesRequest,
-                     db: AsyncSession = Depends(get_db)):
+                     db: AsyncSession = Depends(get_db),
+                     current_user: int = Depends(get_current_user)):
     book = await db.get(models.Book, book_id)
 
     if not book:
@@ -43,7 +45,8 @@ async def add_copies(book_id: int, payload: AddCopiesRequest,
     }
 
 @router.get("/{book_id}", response_model=List[schemas.CopyResponse])
-async def get_copies(book_id: int, db: AsyncSession = Depends(get_db)):
+async def get_copies(book_id: int, db: AsyncSession = Depends(get_db),
+                     current_user: int = Depends(get_current_user)):
     book = await db.get(models.Book, book_id)
 
     if not book:
@@ -58,7 +61,8 @@ async def get_copies(book_id: int, db: AsyncSession = Depends(get_db)):
     return copies.all()
 
 @router.get("/{copy_id}", response_model=schemas.CopyResponse)
-async def get_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
+async def get_copy(copy_id: int, db: AsyncSession = Depends(get_db),
+                current_user: int = Depends(get_current_user)):
     copy = await db.get(models.BookCopy, copy_id)
     if not copy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -67,7 +71,8 @@ async def get_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
     return copy
 
 @router.delete("/{copy_id}", response_model=schemas.CopyResponse)
-async def delete_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_copy(copy_id: int, db: AsyncSession = Depends(get_db),
+                current_user: int = Depends(get_current_user)):
     copy = await db.get(models.BookCopy, copy_id)
     if not copy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -82,7 +87,8 @@ async def delete_copy(copy_id: int, db: AsyncSession = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post("/{copy_id}/borrow")
-async def borrow_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db)):
+async def borrow_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db),
+                current_user: int = Depends(get_current_user)):
     copy = await db.get(models.BookCopy, copy_id)
     if not copy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -104,7 +110,8 @@ async def borrow_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get
     return {"message": "Book borrowed successfully"}
 
 @router.post("/{copy_id}/return")
-async def return_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db)):
+async def return_copy(copy_id: int, user_id: int, db: AsyncSession = Depends(get_db),
+                current_user: int = Depends(get_current_user)):
     copy = await db.get(models.BookCopy, copy_id)
 
     if not copy:

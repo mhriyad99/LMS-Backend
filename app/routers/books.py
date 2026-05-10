@@ -5,21 +5,43 @@ from sqlalchemy import select, update
 
 from app.config.database import get_db
 from app.config import schemas, models
+from app.config.security import get_current_user
 
 router = APIRouter(
     prefix="/books",
     tags=["Books"]
 )
 
-@router.get("/", response_model=List[schemas.BookResponse])
-async def get_book(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.Book))
-    books = result.scalars().all()
+from typing import List, Optional
+from sqlalchemy import select, update, or_
 
+@router.get("/", response_model=List[schemas.BookResponse])
+async def get_book(
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = None,
+    limit: int = 10,
+    skip: int = 0
+):
+    query = select(models.Book)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                models.Book.title.ilike(search_term),
+                models.Book.author.ilike(search_term),
+                models.Book.description.ilike(search_term),
+            )
+        )
+
+    query = query.limit(limit).offset(skip)
+
+    result = await db.execute(query)
+    books = result.scalars().all()
     return books
 
 @router.get("/{_id}", response_model=schemas.BookResponse)
-async def update_book(_id: int, db: AsyncSession = Depends(get_db)):
+async def get_single_book(_id: int, db: AsyncSession = Depends(get_db)):
     book = await db.get(models.Book, _id)
 
     if not book:
@@ -29,7 +51,8 @@ async def update_book(_id: int, db: AsyncSession = Depends(get_db)):
     return book
 
 @router.post("/", response_model=schemas.BookResponse)
-async def add_book(payload: schemas.Book, db: AsyncSession = Depends(get_db)):
+async def add_book(payload: schemas.Book, db: AsyncSession = Depends(get_db),
+                current_user: int = Depends(get_current_user)):
     new_book = models.Book(**payload.model_dump())
     db.add(new_book)
     await db.commit()
@@ -37,7 +60,8 @@ async def add_book(payload: schemas.Book, db: AsyncSession = Depends(get_db)):
     return new_book
 
 @router.put("/{_id}", response_model=schemas.BookResponse)
-async def update_book(_id: int, payload: schemas.Book, db: AsyncSession = Depends(get_db)):
+async def update_book(_id: int, payload: schemas.Book, db: AsyncSession = Depends(get_db),
+                      current_user: int = Depends(get_current_user)):
     book = await db.get(models.Book, _id)
 
     if not book:
@@ -54,7 +78,8 @@ async def update_book(_id: int, payload: schemas.Book, db: AsyncSession = Depend
     return book
 
 @router.delete("/{_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_book(_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_book(_id: int, db: AsyncSession = Depends(get_db),
+                      current_user: int = Depends(get_current_user)):
     book = await db.get(models.Book, _id)
 
     if not book:

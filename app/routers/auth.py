@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,17 +13,18 @@ router = APIRouter(
 )
 
 @router.post("/login", response_model=schemas.Token)
-async def login(payload: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(user_credentials: OAuth2PasswordRequestForm= Depends(),
+                db: AsyncSession = Depends(get_db)):
     result = await db.scalars(
         select(models.User)
-        .where(models.User.email == payload.email)
+        .where(models.User.email == user_credentials.username)
     )
     user = result.first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Incorrect email or password")
 
-    if not password_hash.verify(payload.password, user.password):
+    if not password_hash.verify(user_credentials.password, user.password):
         raise HTTPException(status_code=404, detail="Incorrect email or password")
 
     token = security.create_access_token({"user_id": user.id})
