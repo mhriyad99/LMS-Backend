@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, select, func
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, select, func, Enum
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import column_property, relationship
 import datetime as dt
+import enum
 from datetime import datetime, timedelta
 
 from app.config.database import Base
@@ -13,6 +14,9 @@ DEFAULT_DUE_DATE = 15
 def default_due_date():
     return datetime.now(dt.UTC) + timedelta(days=DEFAULT_DUE_DATE)
 
+class UserRole(enum.Enum):
+    admin = "admin"
+    member = "member"
 
 class User(Base):
     __tablename__ = "users"
@@ -21,6 +25,8 @@ class User(Base):
     username = Column(String(50), nullable=False)
     email = Column(String(50), unique=True, nullable=False)
     password = Column(String, nullable=False)
+    role = Column(Enum(UserRole), nullable=False, server_default="member")
+
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
 
 
@@ -33,6 +39,11 @@ class BookCopy(Base):
 
     book = relationship("Book", back_populates="copies_list")
 
+class Genre(Base):
+    __tablename__ = "genres"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    genre = Column(String(255), nullable=False)
 
 class Book(Base):
     __tablename__ = "books"
