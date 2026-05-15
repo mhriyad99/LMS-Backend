@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, select, func, Enum
+from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey,
+                        select, func, Enum, Table)
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import column_property, relationship
@@ -39,11 +40,21 @@ class BookCopy(Base):
 
     book = relationship("Book", back_populates="copies_list")
 
+
+book_genres = Table(
+    "book_genres",
+    Base.metadata,
+    Column("book_id", Integer,ForeignKey('books.id'), primary_key=True),
+    Column("genre_id", Integer,ForeignKey('genres.id'), primary_key=True),
+)
+
 class Genre(Base):
     __tablename__ = "genres"
 
     id = Column(Integer, primary_key=True, nullable=False)
     genre = Column(String(255), nullable=False)
+
+    books = relationship("Book", secondary=book_genres, back_populates="genres")
 
 class Book(Base):
     __tablename__ = "books"
@@ -63,6 +74,8 @@ class Book(Base):
     copies_list = relationship("BookCopy",
                                back_populates="book",
                                cascade="all, delete-orphan")
+
+    genres = relationship("Genre", secondary=book_genres, back_populates="books")
 
 
 class BorrowRecord(Base):

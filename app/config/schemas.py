@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr
 
 class Book(BaseModel):
@@ -39,3 +41,10 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     id : Optional[str] = None
+
+class GenresOut(BaseModel):
+    id: int
+    title: str
+
+class GenreCreate(BaseModel):
+    title: str
