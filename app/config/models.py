@@ -8,6 +8,7 @@ import enum
 from datetime import datetime, timedelta
 
 from app.config.database import Base
+from app.config.enums import UserRole
 
 DEFAULT_DUE_DATE = 15
 
@@ -15,9 +16,6 @@ DEFAULT_DUE_DATE = 15
 def default_due_date():
     return datetime.now(dt.UTC) + timedelta(days=DEFAULT_DUE_DATE)
 
-class UserRole(enum.Enum):
-    admin = "admin"
-    member = "member"
 
 class User(Base):
     __tablename__ = "users"
