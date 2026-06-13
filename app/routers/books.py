@@ -6,6 +6,7 @@ from sqlalchemy import select, update
 from app.config.database import get_db
 from app.config import schemas, models
 from app.config.security import get_current_user
+from app.config.embedding import embed
 
 router = APIRouter(
     prefix="/books",
@@ -54,6 +55,10 @@ async def get_single_book(_id: int, db: AsyncSession = Depends(get_db)):
 async def add_book(payload: schemas.Book, db: AsyncSession = Depends(get_db),
                 current_user: int = Depends(get_current_user)):
     new_book = models.Book(**payload.model_dump())
+
+    embed_text = " ".join(filter(None, [payload.title, payload.author, payload.description]))
+    new_book.embedding = await embed(embed_text)
+
     db.add(new_book)
     await db.commit()
     await db.refresh(new_book)
@@ -68,10 +73,13 @@ async def update_book(_id: int, payload: schemas.Book, db: AsyncSession = Depend
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND,
                             detail="Book not found")
 
+    embed_text = " ".join(filter(None, [payload.title, payload.author, payload.description]))
+    new_embedding = await embed(embed_text)
+
     await db.execute(
         update(models.Book)
         .where(models.Book.id == _id)
-        .values(**payload.model_dump())
+        .values(**payload.model_dump(), embedding=new_embedding)
     )
     await db.commit()
     await db.refresh(book)
